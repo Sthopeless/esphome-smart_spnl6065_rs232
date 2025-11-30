@@ -1,0 +1,1 @@
+# esphome-smart_spnl6065_rs232
