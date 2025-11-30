@@ -1,0 +1,197 @@
+substitutions:
+  name: "smart-spnl6065-rs232"
+  friendly_name: "SMART SPNL6065 RS232"
+  comment: ${friendly_name}
+  area: ioT
+  board: esp32dev
+  name_add_mac_suffix: True
+  api_encryption_key: !secret smart_spnl6065_rs232_api_encryption_key
+  ota_password: !secret smart_spnl6065_rs232_ota_password
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  area: ${area}
+  comment: ${comment}
+  name_add_mac_suffix: ${name_add_mac_suffix}
+
+esp32:
+  board: ${board}
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: ${api_encryption_key}
+
+ota:
+  - platform: esphome
+    password: ${ota_password}
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${name}"
+    password: !secret hotspot_password
+
+captive_portal:
+
+web_server:
+  port: 80
+
+uart:
+  id: tv_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 19200
+  parity: NONE
+  stop_bits: 1
+
+  debug:
+    direction: BOTH
+    dummy_receiver: false
+    after:
+      delimiter: "\r"
+    sequence:
+      - lambda:  |-
+          UARTDebug::log_string(direction, bytes);
+
+interval:
+  - interval: 10s
+    then:
+      - uart.write: "get modelnum\r"
+      - uart.write: "get volume\r"
+      - uart.write: "get powerstate\r"
+      - uart.write: "get input\r"
+
+sensor:
+  - platform: template
+    name: "TV Response Parser"
+    lambda: |-
+      static std::string buffer;
+      uint8_t byte;
+      while (id(tv_uart).available()) {
+        if (id(tv_uart).read_byte(&byte)) {
+          char c = static_cast<char>(byte);
+          if (c != '\r' && c != '\n') {
+            buffer += c;
+          } else if (!buffer.empty()) {
+            std::string response = buffer;
+            buffer.clear();
+
+            ESP_LOGD("tv_uart", "TV Response: %s", response.c_str());
+
+            // Volume
+            if (response.find("volume") != std::string::npos) {
+              int vol = std::stoi(response.substr(response.find("volume") + 7));
+              id(tv_volume).publish_state(vol);
+            }
+
+            // Power state
+            if (response.find("powerstate on") != std::string::npos) {
+              id(power_switch).turn_on();
+            } else if (response.find("powerstate off") != std::string::npos) {
+              id(power_switch).turn_off();
+            }
+
+            // Video input
+            if (response.find("input HDMI1") != std::string::npos) {
+              id(tv_video_input).publish_state("HDMI1");
+            } else if (response.find("input OPS/HDMI2") != std::string::npos) {
+              id(tv_video_input).publish_state("OPS/HDMI2");
+            }
+
+            // Mute
+            if (response.find("mute on") != std::string::npos) {
+              id(mute_switch).turn_on();
+            } else if (response.find("mute off") != std::string::npos) {
+              id(mute_switch).turn_off();
+            }
+
+            return 0.0;
+          }
+        }
+      }
+      return 0.0;
+    update_interval: 500ms
+
+switch:
+  - platform: uart
+    name: "Power State"
+    id: power_switch
+    data:
+      turn_on: "set powerstate on\r"
+      turn_off: "set powerstate off\r"
+
+  - platform: uart
+    name: "Mute"
+    id: mute_switch
+    data:
+      turn_on: "set mute on\r"
+      turn_off: "set mute off\r"
+
+  - platform: uart
+    name: "Proximity"
+    data:
+      turn_on: "set proximity on\r"
+      turn_off: "set proximity off\r"
+
+select:
+  - platform: template
+    name: "Video Input"
+    id: tv_video_input
+    options:
+      - "HDMI1"
+      - "OPS/HDMI2"
+    initial_option: "HDMI1"
+    optimistic: false
+    set_action:
+      - logger.log:
+          format: "Chosen input: %s"
+          args: ["x"]
+      - uart.write: "set input %s\r"
+
+  - platform: template
+    name: "TV Language"
+    id: tv_language
+    options:
+      - English
+      - Arabic
+      - Danish
+      - German
+      - Spanish
+      - Finnish
+      - French
+      - Hebrew
+      - Italian
+      - Dutch
+      - Norwegian
+      - Portuguese
+      - Russian
+      - Swedish
+      - Turkish
+      - Chinese_sim
+    initial_option: "English"
+    optimistic: false
+    set_action:
+      - logger.log:
+          format: "Chosen language: %s"
+          args: ["x"]
+      - uart.write: "set language %s\r"
+
+number:
+  - platform: template
+    name: "TV Volume"
+    id: tv_volume
+    optimistic: false
+    min_value: 0
+    max_value: 100
+    step: 1
+    set_action:
+      - logger.log:
+          format: "Set volume: %s"
+          args: ["x"]
+      - uart.write: "set volume %s\r"
