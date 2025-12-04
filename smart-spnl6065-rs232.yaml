@@ -5,8 +5,6 @@ substitutions:
   area: ioT
   board: esp32dev
   name_add_mac_suffix: "true"
-  api_encryption_key: "DhNZkzAru/j0tVLHuuuouA9T7Vxq7lrHlqfFoH1jNQQ="
-  ota_password: "2b55903cd383e77d8b4151cc3a9efe6d"
 
 esphome:
   name: ${name}
