@@ -4,16 +4,14 @@ substitutions:
   comment: ${friendly_name}
   area: ioT
   board: esp32dev
-  name_add_mac_suffix: True
-  api_encryption_key: !secret smart_spnl6065_rs232_api_encryption_key
-  ota_password: !secret smart_spnl6065_rs232_ota_password
+  name_add_mac_suffix: "true"
+  api_encryption_key: "DhNZkzAru/j0tVLHuuuouA9T7Vxq7lrHlqfFoH1jNQQ="
+  ota_password: "2b55903cd383e77d8b4151cc3a9efe6d"
 
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   area: ${area}
-  comment: ${comment}
-  name_add_mac_suffix: ${name_add_mac_suffix}
 
 esp32:
   board: ${board}
@@ -24,11 +22,11 @@ logger:
 
 api:
   encryption:
-    key: ${api_encryption_key}
+    key: !secret smart_spnl6065_rs232_api_key
 
 ota:
   - platform: esphome
-    password: ${ota_password}
+    password: !secret smart_spnl6065_rs232_ota_pass
 
 wifi:
   ssid: !secret wifi_ssid
@@ -50,148 +48,585 @@ uart:
   parity: NONE
   stop_bits: 1
 
-  debug:
-    direction: BOTH
-    dummy_receiver: false
-    after:
-      delimiter: "\r"
-    sequence:
-      - lambda:  |-
-          UARTDebug::log_string(direction, bytes);
+globals:
+  - id: tv_rx_buffer
+    type: std::string
+    restore_value: false
 
-interval:
-  - interval: 10s
-    then:
-      - uart.write: "get modelnum\r"
-      - uart.write: "get volume\r"
-      - uart.write: "get powerstate\r"
-      - uart.write: "get input\r"
+binary_sensor:
+  - platform: template
+    name: "Sensor Power"
+    id: tv_power_state
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Mute"
+    id: tv_mute_state
+    disabled_by_default: true
 
 sensor:
   - platform: template
-    name: "TV Response Parser"
-    lambda: |-
-      static std::string buffer;
-      uint8_t byte;
-      while (id(tv_uart).available()) {
-        if (id(tv_uart).read_byte(&byte)) {
-          char c = static_cast<char>(byte);
-          if (c != '\r' && c != '\n') {
-            buffer += c;
-          } else if (!buffer.empty()) {
-            std::string response = buffer;
-            buffer.clear();
+    name: "Sensor Volume"
+    id: tv_volume
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    disabled_by_default: true
 
-            ESP_LOGD("tv_uart", "TV Response: %s", response.c_str());
+  - platform: template
+    name: "Sensor Contrast"
+    id: tv_contrast
+    accuracy_decimals: 0
+    disabled_by_default: true
 
-            // Volume
-            if (response.find("volume") != std::string::npos) {
-              int vol = std::stoi(response.substr(response.find("volume") + 7));
-              id(tv_volume).publish_state(vol);
-            }
+  - platform: template
+    name: "Sensor Brightness"
+    id: tv_brightness
+    accuracy_decimals: 0
+    disabled_by_default: true
 
-            // Power state
-            if (response.find("powerstate on") != std::string::npos) {
-              id(power_switch).turn_on();
-            } else if (response.find("powerstate off") != std::string::npos) {
-              id(power_switch).turn_off();
-            }
+  - platform: template
+    name: "Sensor Displaymode"
+    id: tv_displaymode
+    accuracy_decimals: 0
+    disabled_by_default: true
 
-            // Video input
-            if (response.find("input HDMI1") != std::string::npos) {
-              id(tv_video_input).publish_state("HDMI1");
-            } else if (response.find("input OPS/HDMI2") != std::string::npos) {
-              id(tv_video_input).publish_state("OPS/HDMI2");
-            }
+  - platform: template
+    name: "Sensor Tint"
+    id: tv_tint
+    accuracy_decimals: 0
+    disabled_by_default: true
 
-            // Mute
-            if (response.find("mute on") != std::string::npos) {
-              id(mute_switch).turn_on();
-            } else if (response.find("mute off") != std::string::npos) {
-              id(mute_switch).turn_off();
-            }
+  - platform: template
+    name: "Sensor Sharpness"
+    id: tv_sharpness
+    accuracy_decimals: 0
+    disabled_by_default: true
 
-            return 0.0;
-          }
-        }
-      }
-      return 0.0;
-    update_interval: 500ms
+  - platform: template
+    name: "Sensor Colortemp"
+    id: tv_colortemp
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Red"
+    id: tv_red
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Green"
+    id: tv_green
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Blue"
+    id: tv_blue
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Blacklevel"
+    id: tv_blacklevel
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Treble"
+    id: tv_treble
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Bass"
+    id: tv_bass
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Audio EQ 120Hz"
+    id: tv_audioeq120
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Audio EQ 500Hz"
+    id: tv_audioeq500
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Audio EQ 1.2kHz"
+    id: tv_audioeq1200
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Audio EQ 7.5kHz"
+    id: tv_audioeq7500
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Audio EQ 12kHz"
+    id: tv_audioeq12k
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Balance"
+    id: tv_balance
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ESP IP Address
+
+  - platform: template
+    name: "Model Number"
+    id: smarttv_modelnum
+
+  - platform: template
+    name: "TV Input"
+    id: tv_input
+
+button:
+  - platform: uart
+    name: "Picture Reset"
+    id: tv_get_help
+    data: "set picturereset=yes\r"
 
 switch:
-  - platform: uart
-    name: "Power State"
-    id: power_switch
-    data:
-      turn_on: "set powerstate on\r"
-      turn_off: "set powerstate off\r"
+  - platform: template
+    name: "Power"
+    lambda: |-
+      return id(tv_power_state).state;
+    turn_on_action:
+      - uart.write: "set powerstate=on\r"
+    turn_off_action:
+      - uart.write: "set powerstate=off\r"
 
-  - platform: uart
+  - platform: template
     name: "Mute"
-    id: mute_switch
-    data:
-      turn_on: "set mute on\r"
-      turn_off: "set mute off\r"
-
-  - platform: uart
-    name: "Proximity"
-    data:
-      turn_on: "set proximity on\r"
-      turn_off: "set proximity off\r"
-
-select:
-  - platform: template
-    name: "Video Input"
-    id: tv_video_input
-    options:
-      - "HDMI1"
-      - "OPS/HDMI2"
-    initial_option: "HDMI1"
-    optimistic: false
-    set_action:
-      - logger.log:
-          format: "Chosen input: %s"
-          args: ["x"]
-      - uart.write: "set input %s\r"
-
-  - platform: template
-    name: "TV Language"
-    id: tv_language
-    options:
-      - English
-      - Arabic
-      - Danish
-      - German
-      - Spanish
-      - Finnish
-      - French
-      - Hebrew
-      - Italian
-      - Dutch
-      - Norwegian
-      - Portuguese
-      - Russian
-      - Swedish
-      - Turkish
-      - Chinese_sim
-    initial_option: "English"
-    optimistic: false
-    set_action:
-      - logger.log:
-          format: "Chosen language: %s"
-          args: ["x"]
-      - uart.write: "set language %s\r"
+    lambda: |-
+      return id(tv_mute_state).state;
+    turn_on_action:
+      - uart.write: "set mute=on\r"
+    turn_off_action:
+      - uart.write: "set mute=off\r"
 
 number:
   - platform: template
-    name: "TV Volume"
-    id: tv_volume
-    optimistic: false
+    name: "Volume"
     min_value: 0
     max_value: 100
     step: 1
+    lambda: |-
+      return id(tv_volume).state;
     set_action:
-      - logger.log:
-          format: "Set volume: %s"
-          args: ["x"]
-      - uart.write: "set volume %s\r"
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set volume=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "Contrast"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_contrast).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set contrast=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "Brightness"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_brightness).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set brightness=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "tint"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_tint).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set tint=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "sharpness"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_sharpness).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set sharpness=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "red"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_red).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set red=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "green"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_green).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set green=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "blue"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_blue).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set blue=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "blacklevel"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_blacklevel).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set blacklevel=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "Treble"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_treble).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set treble=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "Bass"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_bass).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set bass=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "audioeq120"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_audioeq120).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set audioeq120=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "audioeq500"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_audioeq500).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set audioeq500=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "audioeq1200"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_audioeq1200).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set audioeq1200=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "audioeq7500"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_audioeq7500).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set audioeq7500=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "audioeq12k"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_audioeq12k).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set audioeq12k=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "balance"
+    min_value: 0
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_balance).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set balance=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+select:
+  - platform: template
+    name: "Input"
+    optimistic: true
+    options:
+      - ops/hdmi2
+      - hdmi1
+    on_value:
+      then:
+        - uart.write:
+            data: !lambda |-
+              std::string cmd = "set input=" + x + "\r";
+              std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+              return bytes;
+
+  - platform: template
+    name: "Displaymode"
+    optimistic: true
+    options:
+      - standard
+      - user
+      - dynamic
+    on_value:
+      then:
+        - uart.write:
+            data: !lambda |-
+              std::string cmd = "set displaymode=" + x + "\r";
+              std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+              return bytes;
+
+  - platform: template
+    name: "Color temp"
+    optimistic: true
+    options:
+      - normal
+      - warm
+      - cool
+      - user
+    on_value:
+      then:
+        - uart.write:
+            data: !lambda |-
+              std::string cmd = "set colortemp=" + x + "\r";
+              std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+              return bytes;
+
+  - platform: template
+    name: "Audio Input"
+    optimistic: true
+    options:
+      - usbaudio
+      - HDMI
+      - OPSDigital
+    on_value:
+      then:
+        - uart.write:
+            data: !lambda |-
+              std::string cmd = "set audioinput=" + x + "\r";
+              std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+              return bytes;
+
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          uint8_t byte;
+          while (id(tv_uart).available()) {
+            if (id(tv_uart).read_byte(&byte)) {
+              char c = (char) byte;
+
+              if (c == '\n' || c == '\r') {
+                if (!id(tv_rx_buffer).empty()) {
+                  std::string msg = id(tv_rx_buffer);
+                  id(tv_rx_buffer).clear();
+
+                  ESP_LOGI("TV_RX", "RX: %s", msg.c_str());
+
+                  if (msg.find("powerstate=") != std::string::npos) {
+                    id(tv_power_state).publish_state(msg.find("on") != std::string::npos);
+                  }
+                  if (msg.find("mute=") != std::string::npos) {
+                    id(tv_mute_state).publish_state(msg.find("on") != std::string::npos);
+                  }
+
+                  if (msg.find("input=") != std::string::npos) {
+                    auto val = msg.substr(msg.find("=") + 1);
+                    id(tv_input).publish_state(val);
+                  }
+                  if (msg.find("modelnum=") != std::string::npos) {
+                    auto val = msg.substr(msg.find("=") + 1);
+                    id(smarttv_modelnum).publish_state(val);
+                  }
+
+                  auto publish_float = [&](const std::string &key, auto *sensor){
+                    if (msg.find(key + "=") != std::string::npos){
+                      auto val = msg.substr(msg.find("=") + 1);
+                      sensor->publish_state(atof(val.c_str()));
+                    }
+                  };
+                  publish_float("volume", id(tv_volume));
+                  publish_float("contrast", id(tv_contrast));
+                  publish_float("displaymode", id(tv_displaymode));
+                  publish_float("brightness", id(tv_brightness));
+                  publish_float("tint", id(tv_tint));
+                  publish_float("sharpness", id(tv_sharpness));
+                  publish_float("colortemp", id(tv_colortemp));
+                  publish_float("red", id(tv_red));
+                  publish_float("green", id(tv_green));
+                  publish_float("blue", id(tv_blue));
+                  publish_float("blacklevel", id(tv_blacklevel));
+                  publish_float("treble", id(tv_treble));
+                  publish_float("bass", id(tv_bass));
+                  publish_float("audioeq120", id(tv_audioeq120));
+                  publish_float("audioeq500", id(tv_audioeq500));
+                  publish_float("audioeq1200", id(tv_audioeq1200));
+                  publish_float("audioeq7500", id(tv_audioeq7500));
+                  publish_float("audioeq12k", id(tv_audioeq12k));
+                  publish_float("balance", id(tv_balance));
+                }
+              } else {
+                id(tv_rx_buffer).push_back(c);
+              }
+            }
+          }
+  - interval: 60s
+    then:
+      - uart.write: "get powerstate\r"
+      - delay: 150ms
+      - uart.write: "get volume\r"
+      - delay: 150ms
+      - uart.write: "get mute\r"
+      - delay: 150ms
+      - uart.write: "get input\r"
+      - delay: 150ms
+      - uart.write: "get modelnum\r"
+      - delay: 150ms
+      - uart.write: "get contrast\r"
+      - delay: 150ms
+      - uart.write: "get displaymode\r"
+      - delay: 150ms
+      - uart.write: "get brightness\r"
+      - delay: 150ms
+      - uart.write: "get tint\r"
+      - delay: 150ms
+      - uart.write: "get sharpness\r"
+      - delay: 150ms
+      - uart.write: "get colortemp\r"
+      - delay: 150ms
+      - uart.write: "get red\r"
+      - delay: 150ms
+      - uart.write: "get green\r"
+      - delay: 150ms
+      - uart.write: "get blue\r"
+      - delay: 150ms
+      - uart.write: "get blacklevel\r"
+      - delay: 150ms
+      - uart.write: "get audioinput\r"
+      - delay: 150ms
+      - uart.write: "get treble\r"
+      - delay: 150ms
+      - uart.write: "get bass\r"
+      - delay: 150ms
+      - uart.write: "get audioeq120\r"
+      - delay: 150ms
+      - uart.write: "get audioeq500\r"
+      - delay: 150ms
+      - uart.write: "get audioeq1200\r"
+      - delay: 150ms
+      - uart.write: "get audioeq7500\r"
+      - delay: 150ms
+      - uart.write: "get audioeq12k\r"
+      - delay: 150ms
+      - uart.write: "get balance\r"
