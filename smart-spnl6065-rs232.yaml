@@ -62,6 +62,11 @@ binary_sensor:
     id: tv_mute_state
     disabled_by_default: true
 
+  - platform: template
+    name: "Sensor Proximity"
+    id: tv_proximity_state
+    disabled_by_default: true
+
 sensor:
   - platform: template
     name: "Sensor Volume"
@@ -178,6 +183,24 @@ sensor:
     accuracy_decimals: 0
     disabled_by_default: true
 
+  - platform: template
+    name: "Sensor Proximity Reenable"
+    id: tv_proximityreenable
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Monitor ID"
+    id: tv_set_monitorid
+    accuracy_decimals: 0
+    disabled_by_default: true
+
+  - platform: template
+    name: "Sensor Auto PowerOff"
+    id: tv_autopoweroff
+    accuracy_decimals: 0
+    disabled_by_default: true
+
 text_sensor:
   - platform: wifi_info
     ip_address:
@@ -197,6 +220,21 @@ button:
     id: tv_get_help
     data: "set picturereset=yes\r"
 
+  - platform: uart
+    name: "Factory Reset"
+    id: tv_factoryreset
+    data: "set factoryreset=yes\r"
+
+  - platform: uart
+    name: "lyncroom reset"
+    id: tv_lyncroomreset
+    data: "set lyncroom=yes\r"
+
+  - platform: uart
+    name: "touchdetected"
+    id: tv_touchdetected
+    data: "set touchdetected=yes\r"
+
 switch:
   - platform: template
     name: "Power"
@@ -215,6 +253,15 @@ switch:
       - uart.write: "set mute=on\r"
     turn_off_action:
       - uart.write: "set mute=off\r"
+
+  - platform: template
+    name: "Proximity"
+    lambda: |-
+      return id(tv_proximity_state).state;
+    turn_on_action:
+      - uart.write: "set proximity=on\r"
+    turn_off_action:
+      - uart.write: "set proximity=off\r"
 
 number:
   - platform: template
@@ -455,6 +502,48 @@ number:
             std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
             return bytes;
 
+  - platform: template
+    name: "Auto PowerOff"
+    min_value: 15
+    max_value: 240
+    step: 1
+    lambda: |-
+      return id(tv_autopoweroff).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set autopoweroff=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "Proximity Reenable"
+    min_value: 1
+    max_value: 10
+    step: 1
+    lambda: |-
+      return id(tv_proximityreenable).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set proximityreenable=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
+  - platform: template
+    name: "Monitorid"
+    min_value: 1
+    max_value: 100
+    step: 1
+    lambda: |-
+      return id(tv_set_monitorid).state;
+    set_action:
+      - uart.write:
+          data: !lambda |-
+            std::string cmd = "set monitorid=" + std::to_string((int)x) + "\r";
+            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+            return bytes;
+
 select:
   - platform: template
     name: "Input"
@@ -516,6 +605,34 @@ select:
               std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
               return bytes;
 
+  - platform: template
+    name: "language"
+    optimistic: true
+    options:
+      - English
+      - Arabic
+      - Danish
+      - German
+      - Spanish
+      - Finnish
+      - French
+      - Hebrew
+      - Italian
+      - Dutch
+      - Norwegian
+      - Portuguese
+      - Russian
+      - Swedish
+      - Turkish
+      - Chinese_sim
+    on_value:
+      then:
+        - uart.write:
+            data: !lambda |-
+              std::string cmd = "set language=" + x + "\r";
+              std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
+              return bytes;
+
 interval:
   - interval: 100ms
     then:
@@ -573,6 +690,9 @@ interval:
                   publish_float("audioeq7500", id(tv_audioeq7500));
                   publish_float("audioeq12k", id(tv_audioeq12k));
                   publish_float("balance", id(tv_balance));
+                  publish_float("proximityreenable", id(tv_proximityreenable));
+                  publish_float("monitorid", id(tv_set_monitorid));
+                  publish_float("autopoweroff", id(tv_autopoweroff));
                 }
               } else {
                 id(tv_rx_buffer).push_back(c);
@@ -628,3 +748,25 @@ interval:
       - uart.write: "get audioeq12k\r"
       - delay: 150ms
       - uart.write: "get balance\r"
+      - delay: 150ms
+      - uart.write: "get autopoweroff\r"
+      - delay: 150ms
+      - uart.write: "get fwverscr\r"
+      - delay: 150ms
+      - uart.write: "get fwvertouch\r"
+      - delay: 150ms
+      - uart.write: "get serialtouch\r"
+      - delay: 150ms
+      - uart.write: "get opsinfo\r"
+      - delay: 150ms
+      - uart.write: "get language\r"
+      - delay: 150ms
+      - uart.write: "get serialnum\r"
+      - delay: 150ms
+      - uart.write: "get proximityinstalled\r"
+      - delay: 150ms
+      - uart.write: "get proximityreenable\r"
+      - delay: 150ms
+      - uart.write: "get proximitydetected\r"
+      - delay: 150ms
+      - uart.write: "get monitorid\r"
