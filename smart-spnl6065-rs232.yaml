@@ -4,12 +4,14 @@ substitutions:
   comment: ${friendly_name}
   area: ioT
   board: esp32dev
-  name_add_mac_suffix: "true"
+  name_add_mac_suffix: false
 
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   area: ${area}
+  comment: ${comment}
+  name_add_mac_suffix: ${name_add_mac_suffix}
 
 esp32:
   board: ${board}
@@ -55,17 +57,14 @@ binary_sensor:
   - platform: template
     name: "Sensor Power"
     id: tv_power_state
-    disabled_by_default: true
 
   - platform: template
     name: "Sensor Mute"
     id: tv_mute_state
-    disabled_by_default: true
 
   - platform: template
     name: "Sensor Proximity"
     id: tv_proximity_state
-    disabled_by_default: true
 
 sensor:
   - platform: template
@@ -73,133 +72,125 @@ sensor:
     id: tv_volume
     unit_of_measurement: "%"
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Contrast"
     id: tv_contrast
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Brightness"
     id: tv_brightness
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Displaymode"
     id: tv_displaymode
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Tint"
     id: tv_tint
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Sharpness"
     id: tv_sharpness
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Colortemp"
     id: tv_colortemp
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Red"
     id: tv_red
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Green"
     id: tv_green
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Blue"
     id: tv_blue
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Blacklevel"
     id: tv_blacklevel
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Treble"
     id: tv_treble
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Bass"
     id: tv_bass
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Audio EQ 120Hz"
     id: tv_audioeq120
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Audio EQ 500Hz"
     id: tv_audioeq500
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Audio EQ 1.2kHz"
     id: tv_audioeq1200
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Audio EQ 7.5kHz"
     id: tv_audioeq7500
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Audio EQ 12kHz"
     id: tv_audioeq12k
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Balance"
     id: tv_balance
     accuracy_decimals: 0
-    disabled_by_default: true
-
-  - platform: template
-    name: "Sensor Proximity Reenable"
-    id: tv_proximityreenable
-    accuracy_decimals: 0
-    disabled_by_default: true
-
-  - platform: template
-    name: "Sensor Monitor ID"
-    id: tv_set_monitorid
-    accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
 
   - platform: template
     name: "Sensor Auto PowerOff"
     id: tv_autopoweroff
     accuracy_decimals: 0
-    disabled_by_default: true
+    disabled_by_default: false
+
+  - platform: template
+    name: "Sensor MonitorID"
+    id: smarttv_monitorid
 
 text_sensor:
   - platform: wifi_info
@@ -213,6 +204,30 @@ text_sensor:
   - platform: template
     name: "TV Input"
     id: tv_input
+
+  - platform: template
+    name: "fwverscr"
+    id: smarttv_fwverscr
+
+  - platform: template
+    name: "fwvertouch"
+    id: smarttv_fwvertouch
+
+  - platform: template
+    name: "serialtouch"
+    id: smarttv_serialtouch
+
+  - platform: template
+    name: "opsinfo"
+    id: smarttv_opsinfo
+
+  - platform: template
+    name: "language"
+    id: smarttv_language
+
+  - platform: template
+    name: "serialnum"
+    id: smarttv_serialnum
 
 button:
   - platform: uart
@@ -517,26 +532,12 @@ number:
             return bytes;
 
   - platform: template
-    name: "Proximity Reenable"
-    min_value: 1
-    max_value: 10
-    step: 1
-    lambda: |-
-      return id(tv_proximityreenable).state;
-    set_action:
-      - uart.write:
-          data: !lambda |-
-            std::string cmd = "set proximityreenable=" + std::to_string((int)x) + "\r";
-            std::vector<uint8_t> bytes(cmd.begin(), cmd.end());
-            return bytes;
-
-  - platform: template
     name: "Monitorid"
     min_value: 1
     max_value: 100
     step: 1
     lambda: |-
-      return id(tv_set_monitorid).state;
+      return id(smarttv_monitorid).state;
     set_action:
       - uart.write:
           data: !lambda |-
@@ -649,21 +650,35 @@ interval:
 
                   ESP_LOGI("TV_RX", "RX: %s", msg.c_str());
 
-                  if (msg.find("powerstate=") != std::string::npos) {
+                  if (msg.find("powerstate=") != std::string::npos)
                     id(tv_power_state).publish_state(msg.find("on") != std::string::npos);
-                  }
-                  if (msg.find("mute=") != std::string::npos) {
-                    id(tv_mute_state).publish_state(msg.find("on") != std::string::npos);
-                  }
 
-                  if (msg.find("input=") != std::string::npos) {
-                    auto val = msg.substr(msg.find("=") + 1);
-                    id(tv_input).publish_state(val);
-                  }
-                  if (msg.find("modelnum=") != std::string::npos) {
-                    auto val = msg.substr(msg.find("=") + 1);
-                    id(smarttv_modelnum).publish_state(val);
-                  }
+                  if (msg.find("mute=") != std::string::npos)
+                    id(tv_mute_state).publish_state(msg.find("on") != std::string::npos);
+
+                  if (msg.find("input=") != std::string::npos)
+                    id(tv_input).publish_state(msg.substr(msg.find("=") + 1));
+
+                  if (msg.find("modelnum=") != std::string::npos)
+                    id(smarttv_modelnum).publish_state(msg.substr(msg.find("=") + 1));
+
+                  if (msg.find("fwverscr=") != std::string::npos)
+                    id(smarttv_fwverscr).publish_state(msg.substr(msg.find("=") + 1));
+
+                  if (msg.find("fwvertouch=") != std::string::npos)
+                    id(smarttv_fwvertouch).publish_state(msg.substr(msg.find("=") + 1));
+
+                  if (msg.find("serialtouch=") != std::string::npos)
+                    id(smarttv_serialtouch).publish_state(msg.substr(msg.find("=") + 1));
+
+                  if (msg.find("language=") != std::string::npos)
+                    id(smarttv_language).publish_state(msg.substr(msg.find("=") + 1));
+
+                  if (msg.find("opsinfo=") != std::string::npos)
+                    id(smarttv_opsinfo).publish_state(msg.substr(msg.find("=") + 1));
+
+                  if (msg.find("serialnum=") != std::string::npos)
+                    id(smarttv_serialnum).publish_state(msg.substr(msg.find("=") + 1));
 
                   auto publish_float = [&](const std::string &key, auto *sensor){
                     if (msg.find(key + "=") != std::string::npos){
@@ -671,6 +686,7 @@ interval:
                       sensor->publish_state(atof(val.c_str()));
                     }
                   };
+
                   publish_float("volume", id(tv_volume));
                   publish_float("contrast", id(tv_contrast));
                   publish_float("displaymode", id(tv_displaymode));
@@ -690,15 +706,15 @@ interval:
                   publish_float("audioeq7500", id(tv_audioeq7500));
                   publish_float("audioeq12k", id(tv_audioeq12k));
                   publish_float("balance", id(tv_balance));
-                  publish_float("proximityreenable", id(tv_proximityreenable));
-                  publish_float("monitorid", id(tv_set_monitorid));
                   publish_float("autopoweroff", id(tv_autopoweroff));
+                  publish_float("monitorid", id(smarttv_monitorid));
                 }
               } else {
                 id(tv_rx_buffer).push_back(c);
               }
             }
           }
+
   - interval: 60s
     then:
       - uart.write: "get powerstate\r"
@@ -764,8 +780,6 @@ interval:
       - uart.write: "get serialnum\r"
       - delay: 150ms
       - uart.write: "get proximityinstalled\r"
-      - delay: 150ms
-      - uart.write: "get proximityreenable\r"
       - delay: 150ms
       - uart.write: "get proximitydetected\r"
       - delay: 150ms
